@@ -146,8 +146,10 @@ export class SchemaCompareServicesFeature extends SqlOpsFeature<undefined> {
 	private static readonly messageTypes: RPCMessageType[] = [
 		contracts.SchemaCompareRequest.type,
 		contracts.SchemaCompareGenerateScriptRequest.type,
+		contracts.SchemaComparePublishChangesRequest.type,
 		contracts.SchemaCompareGetDefaultOptionsRequest.type,
-		contracts.SchemaCompareIncludeExcludeNodeRequest.type
+		contracts.SchemaCompareIncludeExcludeNodeRequest.type,
+		contracts.SchemaCompareOpenScmpRequest.type
 	];
 
 	constructor(client: SqlOpsDataClient) {
@@ -232,6 +234,19 @@ export class SchemaCompareServicesFeature extends SqlOpsFeature<undefined> {
 			);
 		};
 
+		let schemaCompareOpenScmp = (filePath: string): Thenable<azdata.SchemaCompareOpenScmpResult> => {
+			let params: contracts.SchemaCompareOpenScmpParams = { filePath: filePath };
+			return client.sendRequest(contracts.SchemaCompareOpenScmpRequest.type, params).then(
+				r => {
+					return r;
+				},
+				e => {
+					client.logFailedRequest(contracts.SchemaCompareOpenScmpRequest.type, e);
+					return Promise.resolve(undefined);
+				}
+			);
+		};
+
 		let schemaCompareCancel = (operationId: string): Thenable<azdata.ResultStatus> => {
 			let params: contracts.SchemaCompareCancelParams = { operationId: operationId };
 			return client.sendRequest(contracts.SchemaCompareCancellationRequest.type, params).then(
@@ -252,6 +267,7 @@ export class SchemaCompareServicesFeature extends SqlOpsFeature<undefined> {
 			schemaComparePublishChanges,
 			schemaCompareGetDefaultOptions,
 			schemaCompareIncludeExcludeNode,
+			schemaCompareOpenScmp
 			schemaCompareCancel
 		});
 	}

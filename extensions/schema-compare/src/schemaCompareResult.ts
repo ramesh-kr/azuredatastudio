@@ -10,7 +10,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { SchemaCompareOptionsDialog } from './dialogs/schemaCompareOptionsDialog';
 import { Telemetry } from './telemetry';
-import { getTelemetryErrorType, getEndpointName } from './utils';
+import { getTelemetryErrorType, getEndpointName, verifyConnectionAndGetOwnerUri } from './utils';
 import { SchemaCompareDialog } from './dialogs/schemaCompareDialog';
 import { isNullOrUndefined } from 'util';
 const localize = nls.loadMessageBundle();
@@ -43,6 +43,7 @@ export class SchemaCompareResult {
 	private optionsButton: azdata.ButtonComponent;
 	private generateScriptButton: azdata.ButtonComponent;
 	private applyButton: azdata.ButtonComponent;
+	private openScmpButton: azdata.ButtonComponent;
 	private selectSourceButton: azdata.ButtonComponent;
 	private selectTargetButton: azdata.ButtonComponent;
 	private SchemaCompareActionMap: Map<Number, string>;
@@ -119,8 +120,9 @@ export class SchemaCompareResult {
 			this.createGenerateScriptButton(view);
 			this.createApplyButton(view);
 			this.createOptionsButton(view);
+			this.createOpenScmpButton(view);
 			this.createSourceAndTargetButtons(view);
-			this.resetButtons(false); // disable buttons because source and target aren't both selected yet
+			this.resetButtons(true);
 
 			let toolBar = view.modelBuilder.toolbarContainer();
 			toolBar.addToolbarItems([{
@@ -135,7 +137,10 @@ export class SchemaCompareResult {
 				component: this.optionsButton,
 				toolbarSeparatorAfter: true
 			}, {
-				component: this.switchButton
+				component: this.switchButton,
+				toolbarSeparatorAfter: true
+			}, {
+				component: this.openScmpButton
 			}]);
 
 			let sourceLabel = view.modelBuilder.text().withProperties({
@@ -605,16 +610,12 @@ export class SchemaCompareResult {
 		}).component();
 
 		this.optionsButton.onDidClick(async (click) => {
-			Telemetry.sendTelemetryEvent('SchemaCompareOptionsOpened', {
-				'operationId': this.comparisonResult.operationId
-			});
-			//restore options from last time
-			if (this.schemaCompareOptionDialog && this.schemaCompareOptionDialog.deploymentOptions) {
-				this.deploymentOptions = this.schemaCompareOptionDialog.deploymentOptions;
-			}
+			Telemetry.sendTelemetryEvent('SchemaCompareOptionsOpened');
+
 			// create fresh every time
 			this.schemaCompareOptionDialog = new SchemaCompareOptionsDialog(this.deploymentOptions, this);
 			await this.schemaCompareOptionDialog.openDialog();
+			this.deploymentOptions = this.schemaCompareOptionDialog.deploymentOptions;
 		});
 	}
 
@@ -734,6 +735,89 @@ export class SchemaCompareResult {
 			this.sourceTargetSwitched = this.sourceTargetSwitched ? false : true;
 			this.startCompare();
 		});
+	}
+
+	private createOpenScmpButton(view: azdata.ModelView) {
+		this.openScmpButton = view.modelBuilder.button().withProperties({
+			label: localize('schemaCompare.openScmpButton', 'Open .scmp file'),
+			iconPath: {
+				light: path.join(__dirname, 'media', 'generate-script.svg'),
+				dark: path.join(__dirname, 'media', 'generate-script-inverse.svg')
+			},
+			title: localize('schemaCompare.openScmpButtonTitle', 'Open .scmp file')
+		}).component();
+
+		this.openScmpButton.onDidClick(async (click) => {
+			Telemetry.sendTelemetryEvent('SchemaCompareOpenScmpStarted');
+			const rootPath = vscode.workspace.rootPath ? vscode.workspace.rootPath : os.homedir();
+			let fileUris = await vscode.window.showOpenDialog(
+				{
+					canSelectFiles: true,
+					canSelectFolders: false,
+					canSelectMany: false,
+					defaultUri: vscode.Uri.file(rootPath),
+					openLabel: localize('schemaCompare.openFile', 'Open'),
+					filters: {
+						'scmp Files': ['scmp'],
+					}
+				}
+			);
+
+			if (!fileUris || fileUris.length === 0) {
+				return;
+			}
+
+			let fileUri = fileUris[0];
+			const service = await SchemaCompareResult.getService('MSSQL');
+			const result = await service.schemaCompareOpenScmp(fileUri.fsPath);
+
+			this.sourceEndpointInfo = result.sourceEndpointInfo;
+			this.targetEndpointInfo = result.targetEndpointInfo;
+			this.updateSourceAndTarget();
+
+			// try to connect
+			this.sourceEndpointInfo.ownerUri = await verifyConnectionAndGetOwnerUri(this.sourceEndpointInfo);
+			this.targetEndpointInfo.ownerUri = await verifyConnectionAndGetOwnerUri(this.targetEndpointInfo);
+
+			console.error('done connecting');
+			this.deploymentOptions = result.deploymentOptions;
+
+			if (!result || !result.success) {
+				Telemetry.sendTelemetryEvent('SchemaCompareOpenScmpFailed', {
+					'errorType': getTelemetryErrorType(result.errorMessage)
+				});
+				vscode.window.showErrorMessage(
+					localize('schemaCompare.openScmpErrorMessage', "Open scmp failed: '{0}'", (result && result.errorMessage) ? result.errorMessage : 'Unknown'));
+			}
+
+			Telemetry.sendTelemetryEvent('SchemaCompareOpenScmpEnded', {
+				'endTime:': Date.now().toString()
+			});
+		});
+	}
+
+	// update source and target name to display
+	public updateSourceAndTarget() {
+		this.sourceName = getEndpointName(this.sourceEndpointInfo);
+		this.targetName = getEndpointName(this.targetEndpointInfo);
+
+		this.sourceNameComponent.updateProperty('columns', [
+			{
+				value: this.sourceName,
+				headerCssClass: 'no-borders',
+				toolTip: this.sourceName
+			},
+		]);
+		this.targetNameComponent.updateProperty('columns', [
+			{
+				value: this.targetName,
+				headerCssClass: 'no-borders',
+				toolTip: this.targetName
+			},
+		]);
+
+		// reset buttons to before comparison state
+		this.resetButtons(true);
 	}
 
 	private createSourceAndTargetButtons(view: azdata.ModelView): void {

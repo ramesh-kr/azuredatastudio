@@ -488,7 +488,6 @@ export class MainThreadDataProtocol implements MainThreadDataProtocolShape {
 			schemaCompareOpenScmp(filePath: string): Thenable<azdata.SchemaCompareOpenScmpResult> {
 				return self._proxy.$schemaCompareOpenScmp(handle, filePath);
 			},
-			},
 			schemaCompareCancel(operationId: string): Thenable<azdata.ResultStatus> {
 				return self._proxy.$schemaCompareCancel(handle, operationId);
 			}

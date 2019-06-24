@@ -28,7 +28,7 @@ const schemaCompareResourceName = 'Schema Compare';
 enum ResetButtonState {
 	noSourceTarget,
 	beforeCompareStart,
-	disabled,
+	comparing,
 }
 
 export class SchemaCompareResult {
@@ -531,7 +531,7 @@ export class SchemaCompareResult {
 		if (this.tablelistenersToDispose) {
 			this.tablelistenersToDispose.forEach(x => x.dispose());
 		}
-		this.resetButtons(ResetButtonState.disabled);
+		this.resetButtons(ResetButtonState.comparing);
 		this.execute();
 	}
 
@@ -576,7 +576,7 @@ export class SchemaCompareResult {
 		this.flexModel.removeItem(this.loader);
 		this.flexModel.removeItem(this.waitText);
 		this.flexModel.addItem(this.startText, { CSSStyles: { 'margin': 'auto' } });
-		this.resetButtons(true);
+		this.resetButtons(ResetButtonState.beforeCompareStart);
 
 		// cancel compare
 		if (this.operationId) {
@@ -705,7 +705,7 @@ export class SchemaCompareResult {
 				this.optionsButton.enabled = false;
 				this.switchButton.enabled = this.sourceEndpointInfo ? true : false; // allows switching if the source is set
 				this.openScmpButton.enabled = true;
-			    this.cancelCompareButton.enabled = false;
+				this.cancelCompareButton.enabled = false;
 				break;
 			}
 			case (ResetButtonState.beforeCompareStart): {
@@ -713,15 +713,15 @@ export class SchemaCompareResult {
 				this.optionsButton.enabled = true;
 				this.switchButton.enabled = true;
 				this.openScmpButton.enabled = true;
-			    this.cancelCompareButton.enabled = false;
+				this.cancelCompareButton.enabled = false;
 				break;
 			}
-			case (ResetButtonState.disabled): {
+			case (ResetButtonState.comparing): {
 				this.compareButton.enabled = false;
 				this.optionsButton.enabled = false;
 				this.switchButton.enabled = false;
 				this.openScmpButton.enabled = false;
-			    this.cancelCompareButton.enabled = true;
+				this.cancelCompareButton.enabled = true;
 				break;
 			}
 		}

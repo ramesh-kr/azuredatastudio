@@ -267,7 +267,7 @@ export class SchemaCompareServicesFeature extends SqlOpsFeature<undefined> {
 			schemaComparePublishChanges,
 			schemaCompareGetDefaultOptions,
 			schemaCompareIncludeExcludeNode,
-			schemaCompareOpenScmp
+			schemaCompareOpenScmp,
 			schemaCompareCancel
 		});
 	}

@@ -1,0 +1,7 @@
+{
+	"aris.title": "Big Data Cluster Controllers",
+	"aris.displayName": "SQL Server Aris Controllers",
+	"aris.description": "Support for managing SQL Server Aris Controllers",
+	"aris.resource.explorer.title": "Aris",
+	"aris.resource.registerArisController.title": "Add Aris Controller"
+}

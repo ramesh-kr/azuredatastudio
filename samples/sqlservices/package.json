@@ -105,7 +105,7 @@
         "sqlops": "github:anthonydresser/sqlops-extension-sqlops",
         "tslint": "^3.14.0",
         "typescript": "^2.6.1",
-        "url-parse": "^1.4.4",
+        "url-parse": "^1.5.2",
         "vsce": "^1.57.1",
         "vscode": "^1.1.30"
     },
